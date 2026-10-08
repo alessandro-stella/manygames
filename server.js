@@ -9,6 +9,7 @@ const projectDir = process.cwd();
 loadEnvConfig(projectDir);
 
 import { env } from "./env.mjs";
+import { registerRoomHandlers } from "./rooms.js";
 
 const dev = env.NODE_ENV !== "production";
 const hostname = "localhost";
@@ -23,43 +24,11 @@ app.prepare().then(() => {
   const io = new Server(httpServer, {
     cors: {
       origin: env.SITE_URL,
-      methods: ["GET", "POST"]
-    }
+      methods: ["GET", "POST"],
+    },
   });
 
-  io.on("connection", (socket) => {
-    socket.on("join_room", async ({ roomId, username }) => {
-      socket.join(roomId);
-      socket.data.username = username;
-      socket.data.roomId = roomId;
-
-      const socketsInRoom = await io.in(roomId).fetchSockets();
-      const players = socketsInRoom.map((s) => ({
-        id: s.id,
-        username: s.data.username
-      }));
-
-      io.in(roomId).emit("room_state", { players });
-    });
-
-    socket.on("submit_guess", (data) => {
-      socket.to(data.roomId).emit("opponent_guessed", data);
-    });
-
-    socket.on("disconnect", async () => {
-      if (socket.data.roomId) {
-        const socketsInRoom = await io.in(socket.data.roomId).fetchSockets();
-        const players = socketsInRoom
-          .filter((s) => s.id !== socket.id)
-          .map((s) => ({
-            id: s.id,
-            username: s.data.username
-          }));
-
-        io.in(socket.data.roomId).emit("room_state", { players });
-      }
-    });
-  });
+  registerRoomHandlers(io);
 
   httpServer
     .once("error", (err) => {
@@ -67,7 +36,7 @@ app.prepare().then(() => {
       process.exit(1);
     })
     .listen(port, () => {
-      console.log(`> Ready on http://${hostname}:${port}`);
-      console.log(`> CORS locked on: ${env.SITE_URL}`);
+      console.log(`Server ready on http://${hostname}:${port}`);
+      console.log(`CORS locked on: ${env.SITE_URL}`);
     });
 });
