@@ -8,6 +8,7 @@ export interface GameLogic {
   order: "asc" | "desc";
   generate(): unknown;
   toPublic(data: unknown): unknown;
+  scoreSingle(target: unknown, guess: unknown): number;
   score(data: unknown, submission: unknown): number;
 }
 

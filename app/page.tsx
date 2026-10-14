@@ -1,6 +1,6 @@
 "use client";
 
-import GameCard from "@/components/GemeCard";
+import GameCard from "@/components/GameCard";
 import { GAME_INFO } from "@/components/registry";
 
 export default function Home() {

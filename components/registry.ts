@@ -1,8 +1,8 @@
 import type { ComponentType } from "react";
 import { GAMES } from "@/games";
-import ColorGame from "./ColorGame";
-import TimeGame from "./TimeGame";
 import type { GameLogic, GameProps, GameDetails } from "./types";
+import ColorGame from "./games/ColorGame";
+import TimeGame from "./games/TimeGame";
 
 type AnyGameComponent = ComponentType<GameProps<unknown, unknown>>;
 

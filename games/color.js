@@ -1,14 +1,25 @@
 const rand = () => Math.floor(Math.random() * 256);
+const maxSingleError = Math.hypot(255, 255, 255);
 
 export const colorGame = {
-  order: "asc",
+  order: "desc",
   generate: () => ({
     colors: Array.from({ length: 5 }, () => [rand(), rand(), rand()]),
   }),
   toPublic: (data) => data,
-  score: (data, { guesses }) =>
-    data.colors.reduce((sum, c, i) => {
-      const g = guesses[i] ?? [0, 0, 0];
-      return sum + Math.hypot(c[0] - g[0], c[1] - g[1], c[2] - g[2]);
-    }, 0),
+
+  scoreSingle: (target, guess) => {
+    const c = target;
+    const g = guess ?? [0, 0, 0];
+    const error = Math.hypot(c[0] - g[0], c[1] - g[1], c[2] - g[2]);
+
+    let score = 10 - (error / maxSingleError) * 10;
+    return Math.max(0, Number(score.toFixed(1)));
+  },
+
+  score: ({ colors }, { guesses }) => {
+    const scores = colors.map((c, i) => colorGame.scoreSingle(c, guesses[i]));
+
+    return scores.reduce((partial, s) => partial + s, 0);
+  },
 };

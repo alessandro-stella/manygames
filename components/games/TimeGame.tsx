@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { GameProps } from "./types";
+import type { GameProps } from "../types";
 
 type TimeData = { targetMs: number };
 type TimeSubmission = { stoppedMs: number };
