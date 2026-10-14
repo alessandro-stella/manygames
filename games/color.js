@@ -13,13 +13,14 @@ export const colorGame = {
     const g = guess ?? [0, 0, 0];
     const error = Math.hypot(c[0] - g[0], c[1] - g[1], c[2] - g[2]);
 
-    let score = 10 - (error / maxSingleError) * 10;
-    return Math.max(0, Number(score.toFixed(1)));
+    const score = 10 - (error / maxSingleError) * 10;
+    return Math.max(0, Number(score.toFixed(2)));
   },
 
   score: ({ colors }, { guesses }) => {
     const scores = colors.map((c, i) => colorGame.scoreSingle(c, guesses[i]));
+    const total = scores.reduce((partial, s) => partial + s, 0);
 
-    return scores.reduce((partial, s) => partial + s, 0);
+    return Number(total.toFixed(2));
   },
 };

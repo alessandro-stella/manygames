@@ -114,10 +114,9 @@ export default function ColorGame({
   const [step, setStep] = useState(0);
   const [guesses, setGuesses] = useState<Rgb[]>([]);
 
-  const initialHsv = randomStartHsv(data.colors[0]);
-  const [h, setH] = useState(initialHsv[0]);
-  const [s, setS] = useState(initialHsv[1]);
-  const [v, setV] = useState(initialHsv[2]);
+  const [h, setH] = useState(0);
+  const [s, setS] = useState(0);
+  const [v, setV] = useState(0);
 
   const [activeLabel, setActiveLabel] = useState<string | null>(null);
 
@@ -126,6 +125,11 @@ export default function ColorGame({
     setH(nh);
     setS(ns);
     setV(nv);
+  };
+
+  const startRound = () => {
+    resetSliders(data.colors[step]);
+    setWaitNext(false);
   };
 
   useEffect(() => {
@@ -192,7 +196,6 @@ export default function ColorGame({
     } else {
       setGuesses(next);
       setStep(step + 1);
-      resetSliders(data.colors[step + 1]);
       setGuessing(false);
       setDelaying(false);
       setActiveLabel(null);
@@ -203,7 +206,7 @@ export default function ColorGame({
   return (
     <div className="h-full flex flex-col items-center gap-4 p-8">
       <div
-        className={`relative h-[60dvh] w-[60dvh] rounded-xl overflow-hidden shadow-lg ${!guessing ? "transition-colors duration-1000" : ""}`}
+        className={`relative w-[60dvh] max-w-[80vw] aspect-square rounded-xl overflow-hidden shadow-lg ${!guessing ? "transition-colors duration-1000" : ""}`}
         style={{ backgroundColor: waitNext ? "black" : toHex(currentColor) }}
       >
         <div
@@ -231,13 +234,15 @@ export default function ColorGame({
                   )}
                 </div>
                 <div>
-                  {guesses[i] ? colorGame.scoreSingle(c, guesses[i]) : "TBD"}
+                  {guesses[i]
+                    ? colorGame.scoreSingle(c, guesses[i]).toFixed(2)
+                    : "TBD"}
                 </div>
               </div>
             ))}
           </div>
           <button
-            onClick={() => setWaitNext(false)}
+            onClick={startRound}
             className="bg-white text-black px-6 py-3 rounded-full font-bold shadow-2xl hover:bg-gray-200 transition-colors cursor-pointer"
           >
             Next

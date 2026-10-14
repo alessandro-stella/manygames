@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useState, useSyncExternalStore } from "react";
 import { useParams } from "next/navigation";
 import { GAME_COMPONENTS, GAME_LOGIC } from "@/components/registry";
 
@@ -77,15 +77,21 @@ function SinglePlayerContent() {
 }
 
 export default function SinglePlayerPage() {
+  const mounted = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false,
+  );
+
+  const loading = (
+    <div className="min-h-screen flex items-center justify-center bg-gray-900 text-white">
+      Loading...
+    </div>
+  );
+
   return (
-    <Suspense
-      fallback={
-        <div className="min-h-screen flex items-center justify-center bg-gray-900 text-white">
-          Loading...
-        </div>
-      }
-    >
-      <SinglePlayerContent />
+    <Suspense fallback={loading}>
+      {mounted ? <SinglePlayerContent /> : loading}
     </Suspense>
   );
 }
