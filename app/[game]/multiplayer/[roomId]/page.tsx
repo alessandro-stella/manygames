@@ -1,17 +1,42 @@
 "use client";
 
-import { useState, useEffect, useSyncExternalStore, Suspense } from "react";
-import { useParams } from "next/navigation";
+import {
+  useState,
+  useEffect,
+  useRef,
+  useSyncExternalStore,
+  Suspense,
+} from "react";
+import Link from "next/link";
+import { useParams, useSearchParams } from "next/navigation";
 import { socket } from "@/socket";
 import { GAME_COMPONENTS } from "@/components/registry";
 
 type Player = { id: string; username: string };
 type LeaderboardEntry = { username: string; score: number };
+type JoinAck = { ok: boolean; error?: string };
 
 const subscribe = () => () => {};
 
+const ERROR_MESSAGES: Record<string, string> = {
+  name_taken: "Nickname already taken in this room.",
+  bad_username: "Invalid nickname (max 20 characters).",
+  already_joined: "You are already in this room from another session.",
+  room_exists: "Room code already in use, go back and create a new room.",
+};
+
+function getPlayerId() {
+  let id = sessionStorage.getItem("minigames_pid");
+  if (!id) {
+    id = crypto.randomUUID();
+    sessionStorage.setItem("minigames_pid", id);
+  }
+  return id;
+}
+
 function MultiplayerLobbyContent() {
   const { game, roomId } = useParams<{ game: string; roomId: string }>();
+  const searchParams = useSearchParams();
 
   const savedUsername = useSyncExternalStore(
     subscribe,
@@ -20,20 +45,26 @@ function MultiplayerLobbyContent() {
   );
   const mounted = savedUsername !== null;
 
+  const createRef = useRef(searchParams.get("create") === "1");
+
   const [typedUsername, setTypedUsername] = useState<string | null>(null);
   const [joinedNow, setJoinedNow] = useState(false);
+  const [joinError, setJoinError] = useState<string | null>(null);
   const [players, setPlayers] = useState<Player[]>([]);
   const [gameData, setGameData] = useState<unknown>(null);
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
 
-  const username = typedUsername ?? savedUsername ?? "";
-  const isJoined = joinedNow || !!savedUsername;
+  const rawUsername = typedUsername ?? savedUsername ?? "";
+  const username = rawUsername.trim();
+  const isJoined = !joinError && (joinedNow || !!savedUsername);
   const hasSubmitted = leaderboard.some((e) => e.username === username);
 
   const ActiveGame = GAME_COMPONENTS[game];
 
   useEffect(() => {
     if (!isJoined || !ActiveGame) return;
+
+    let cancelled = false;
 
     const onRoomState = (d: { players: Player[] }) => setPlayers(d.players);
     const onGameData = (d: unknown) => setGameData(d);
@@ -44,9 +75,44 @@ function MultiplayerLobbyContent() {
     socket.on("leaderboard", onLeaderboard);
 
     if (!socket.connected) socket.connect();
-    socket.emit("join_room", { roomId, username, gameType: game });
+
+    const join = (create: boolean) => {
+      socket.emit(
+        "join_room",
+        { roomId, username, gameType: game, playerId: getPlayerId(), create },
+        (res: JoinAck) => {
+          if (cancelled) return;
+
+          if (res.ok) {
+            sessionStorage.setItem(`minigames_${roomId}`, username);
+            if (createRef.current) {
+              createRef.current = false;
+              window.history.replaceState(
+                null,
+                "",
+                `/${game}/multiplayer/${roomId}`,
+              );
+            }
+            return;
+          }
+
+          if (res.error === "room_exists" && create) {
+            createRef.current = false;
+            return join(false);
+          }
+
+          sessionStorage.removeItem(`minigames_${roomId}`);
+          setTypedUsername(username);
+          setJoinError(res.error ?? "unknown");
+          setJoinedNow(false);
+        },
+      );
+    };
+
+    join(createRef.current);
 
     return () => {
+      cancelled = true;
       socket.off("room_state", onRoomState);
       socket.off("game_data", onGameData);
       socket.off("leaderboard", onLeaderboard);
@@ -64,10 +130,24 @@ function MultiplayerLobbyContent() {
     );
   }
 
+  if (joinError === "not_found") {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen bg-black gap-4 text-white">
+        <p className="text-red-500">Room not found or expired.</p>
+        <Link
+          href={`/${game}/multiplayer`}
+          className="bg-blue-600 hover:bg-blue-500 font-bold px-4 py-2 rounded"
+        >
+          Back to multiplayer
+        </Link>
+      </div>
+    );
+  }
+
   const handleJoin = (e: React.SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!username.trim()) return;
-    sessionStorage.setItem(`minigames_${roomId}`, username);
+    if (!username) return;
+    setJoinError(null);
     setJoinedNow(true);
   };
 
@@ -87,11 +167,20 @@ function MultiplayerLobbyContent() {
           <input
             type="text"
             placeholder="Your Nickname..."
-            value={username}
-            onChange={(e) => setTypedUsername(e.target.value)}
+            value={rawUsername}
+            maxLength={20}
+            onChange={(e) => {
+              setTypedUsername(e.target.value);
+              setJoinError(null);
+            }}
             className="border-none p-3 rounded bg-gray-700 text-white focus:ring-2 focus:ring-blue-500"
             autoFocus
           />
+          {joinError && (
+            <p className="text-red-500 text-sm text-center">
+              {ERROR_MESSAGES[joinError] ?? "Could not join the room."}
+            </p>
+          )}
           <button
             type="submit"
             className="bg-green-600 hover:bg-green-500 text-white font-bold p-3 rounded"
