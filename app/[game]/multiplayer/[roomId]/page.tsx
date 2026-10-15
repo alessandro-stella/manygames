@@ -11,6 +11,7 @@ import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { socket } from "@/socket";
 import { GAME_COMPONENTS } from "@/components/registry";
+import { ShareButton } from "@/components/ShareButtons";
 
 type Player = { id: string; username: string };
 type LeaderboardEntry = { username: string; score: number };
@@ -199,8 +200,11 @@ function MultiplayerLobbyContent() {
   return (
     <div className="min-h-screen bg-gray-900 p-8 text-white">
       <header className="max-w-4xl mx-auto flex justify-between items-center border-b border-gray-700 pb-4 mb-8">
-        <div>
-          Room: <span className="font-mono text-blue-400">{roomId}</span>
+        <div className="flex items-center gap-3">
+          <span>
+            Room: <span className="font-mono text-blue-400">{roomId}</span>
+          </span>
+          <ShareButton roomId={roomId} />
         </div>
         <div className="text-right">
           <div>
